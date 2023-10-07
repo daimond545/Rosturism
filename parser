@@ -1,0 +1,44 @@
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+from fake_useragent import UserAgent
+
+url = 'https://tourism.gov.ru/reestry/reestr-gostinits-i-inykh-sredstv-razmeshcheniya/?ysclid=lmohjrag88315355574&PAGEN_1='
+ua = UserAgent()
+fake_ua = {'user-agent': ua.random}
+df = pd.DataFrame()
+
+for i in range(1, 1872):
+    print(i)
+    full_url = url + str(i)
+    print(full_url)
+    response = requests.get(full_url, headers=fake_ua)
+    soup = BeautifulSoup(response.text, 'lxml')
+    div = soup.find_all('div', class_='result-item reestr-item')
+    
+    links = []
+    for link in div:
+        links.append(link['data-link'])
+    
+    for i in links:
+        print(i)
+        ua = UserAgent()
+        fake_ua = {'user-agent': ua.random}
+        url_hotel = 'https://tourism.gov.ru' + i
+        response = requests.get(url_hotel, headers=fake_ua)
+        soup = BeautifulSoup(response.text, 'lxml')
+        divs = soup.find_all('div', class_='info-part')
+        a = []
+        b = []
+        for i in divs:
+            if i.find('p', class_='info__name').text == 'Информация об аккредитованной организации, выдавшей свидетельство':
+                break
+            else:
+                a.append(i.find('p', class_='info__name').text)
+                try:
+                    b.append(i.find('p', class_='info__text').text)
+                except:
+                    b.append(i.find('a')['href'])
+        result = dict(zip(a, b))
+        df_result = pd.DataFrame([result])
+        df = pd.concat([df, df_result])
